@@ -1,8 +1,8 @@
 <#
 .SYNOPSIS
-    System Purge v1.1 
+    System Purge v7.0 (Shield Edition)
     Author: GitSlinger-025 | NextSeed Lab
-    Features: Auto-Admin, Debloat, Privacy, DNS Opt, Ultimate Power, Hardware Stats.
+    Safety Update: Restore Points, Confirmation Layers, and Safe Guards.
 #>
 
 # --- LAYER -1: ADMIN AUTO-ELEVATE ---
@@ -23,17 +23,110 @@ function Show-Loader($Message) {
     Write-Host "`r[+] $Message [DONE]" -ForegroundColor Green
 }
 
-function Get-HardwareStats {
-    $os = Get-CimInstance Win32_OperatingSystem
-    # RAM conversion to GB (Free and Total)
-    $freeRam = [Math]::Round($os.FreePhysicalMemory / 1MB, 2)
-    $totalRam = [Math]::Round($os.TotalVisibleMemorySize / 1MB, 2)
-    $cpu = (Get-CimInstance Win32_Processor).LoadPercentage
-    Write-Host "`n================ SYSTEM HEALTH ================" -ForegroundColor Cyan
-    Write-Host " RAM Usage: $($totalRam - $freeRam) GB used of $totalRam GB" -ForegroundColor White
-    Write-Host " CPU Load: $cpu%" -ForegroundColor White
-    Write-Host "===============================================" -ForegroundColor Cyan
+# --- SYSTEM BACKUP ENGINE ---
+function Create-Backup {
+    Write-Host ">>> INITIALIZING SYSTEM SAFETY CHECK..." -ForegroundColor Cyan
+    try {
+        Enable-ComputerRestore -Drive "C:\" -ErrorAction SilentlyContinue
+        Checkpoint-Computer -Description "Before_System_Purge_v7" -RestorePointType "MODIFY_SETTINGS" -ErrorAction Stop
+        Write-Host "[+] Safety Point Created Successfully." -ForegroundColor Green
+    } catch {
+        Write-Host "[!] Could not create restore point. Continue anyway? (y/n)" -ForegroundColor Red
+        if ((Read-Host) -ne "y") { exit }
+    }
 }
+
+# --- SAFE PROCESS KILLER ---
+function Safe-Kill($name) {
+    $CriticalProcs = @("explorer", "svchost", "winlogon", "lsass", "services", "csrss")
+    if ($CriticalProcs -contains $name.ToLower()) {
+        Write-Host "[!] Blocked: Attempted to kill critical system process: $name" -ForegroundColor Red
+        return $false
+    }
+    Get-Process | Where-Object { $_.Name -like "*$name*" } | Stop-Process -Force -ErrorAction SilentlyContinue
+    return $true
+}
+
+# --- MAIN ENGINE ---
+Clear-Host
+Create-Backup
+Start-Sleep -Seconds 1
+
+do {
+    Clear-Host
+    Write-Host "=====================================================" -ForegroundColor Cyan
+    Write-Host "   >>>       SYSTEM PURGE v7.0 (SHIELD)        <<<   " -ForegroundColor White -BackgroundColor DarkBlue
+    Write-Host "   NextSeed Lab | Reliability First Mode             " -ForegroundColor Yellow
+    Write-Host "   GitHub: github.com/GitSlinger-025                 " -ForegroundColor Gray
+    Write-Host "=====================================================" -ForegroundColor Cyan
+    Write-Host " COMMANDS: 'debloat' | 'privacy' | 'boost' | 'clean' " -ForegroundColor White
+    Write-Host " MODS:     'dns' | 'power' | 'stats' | 'exit'        " -ForegroundColor Green
+    Write-Host "-----------------------------------------------------" -ForegroundColor DarkCyan
+
+    $cmd = (Read-Host "`n[?] System Command").ToLower().Trim()
+    if ($cmd -eq "exit") { break }
+    if ($cmd -eq "") { continue }
+
+    # Confirmation Layer
+    Write-Host "[!] Proceed with '$cmd'? (y/n): " -NoNewline -ForegroundColor Yellow
+    if ((Read-Host) -ne "y") { continue }
+
+    switch ($cmd) {
+        "debloat" {
+            Show-Loader "Purging Windows Bloatware..."
+            $apps = @("ZuneVideo","ZuneMusic","SkypeApp","YourPhone","BingNews","MicrosoftSolitaireCollection","FeedbackHub")
+            foreach($app in $apps) { Get-AppxPackage -AllUsers "*$app*" | Remove-AppxPackage -ErrorAction SilentlyContinue }
+            Write-Host "[+] Bloatware Cleared!" -ForegroundColor Green
+        }
+        "privacy" {
+            Show-Loader "Limiting Telemetry..."
+            Set-Service "DiagTrack" -StartupType Manual -ErrorAction SilentlyContinue
+            Stop-Service "DiagTrack" -Force -ErrorAction SilentlyContinue
+            Write-Host "[+] Privacy limited. Service set to Manual." -ForegroundColor Green
+        }
+        "dns" {
+            Show-Loader "Setting Google DNS..."
+            Get-NetAdapter | Where-Object { $_.Status -eq "Up" } | Set-DnsClientServerAddress -ServerAddresses ("8.8.8.8","8.8.4.4") -ErrorAction SilentlyContinue
+            ipconfig /flushdns | Out-Null
+            Write-Host "[+] DNS Optimized." -ForegroundColor Green
+        }
+        "power" {
+            Show-Loader "Activating Ultimate Performance..."
+            powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 | Out-Null
+            powercfg -setactive e9a42b02-d5df-448d-aa00-03f14749eb61
+            Write-Host "[+] Ultimate Power Active!" -ForegroundColor Green
+        }
+        "boost" {
+            Show-Loader "Removing Visual Lag..."
+            Set-ItemProperty -Path "HKCU:\Control Panel\Desktop" -Name "MenuShowDelay" -Value 0
+            Write-Host "[+] Speed Boost Applied." -ForegroundColor Green
+        }
+        "clean" {
+            Show-Loader "Deep Cleaning Trash..."
+            Remove-Item "$env:TEMP\*" -Recurse -Force -ErrorAction SilentlyContinue
+            Clear-RecycleBin -Force -ErrorAction SilentlyContinue
+            Write-Host "[+] Temp Files Purged." -ForegroundColor Green
+        }
+        "stats" {
+            $os = Get-CimInstance Win32_OperatingSystem
+            $free = [Math]::Round($os.FreePhysicalMemory / 1MB, 2)
+            $total = [Math]::Round($os.TotalVisibleMemorySize / 1MB, 2)
+            Write-Host "`nRAM: $free GB Free of $total GB" -ForegroundColor Green
+        }
+        default {
+            if (Safe-Kill $cmd) {
+                Show-Loader "Targeting $cmd..."
+                Get-AppxPackage -AllUsers "*$cmd*" | Remove-AppxPackage -ErrorAction SilentlyContinue
+                winget uninstall --name $cmd --silent --accept-source-agreements > $null 2>&1
+                Write-Host " >> $cmd: DESTROYED!" -ForegroundColor Red
+            }
+        }
+    }
+    Read-Host "`n[?] Task Done. Press Enter..."
+} while ($true)
+
+Write-Host "`n[*] System Purged. Shutdown..." -ForegroundColor Magenta
+Start-Sleep -Seconds 2
 
 # --- MAIN ENGINE LOOP ---
 do {
