@@ -1,4 +1,4 @@
-# 🛡️ System Purge v1.1 (Shield Edition)
+# 🛡️ System Purge v1.1
 **Ultimate Windows Optimization & Debloat Suite**
 *Developed by GitSlinger-025 | Powered by NextSeed Lab*
 
